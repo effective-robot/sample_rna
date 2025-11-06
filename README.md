@@ -2,7 +2,7 @@
 # RNA-seq Practice Workflow (Paired-End)
 
 This repository provides a **hands-on practice pipeline** for students learning RNA-seq data analysis.  
-It uses **publicly available paired-end reads** (uploaded here as *control* and *treated* samples) and covers every major preprocessing step — from quality control to gene-level read counting.
+It uses **publicly available paired-end reads** (uploaded here as *control* and *treated* samples), for potato and covers every major preprocessing step — from quality control to gene-level read counting.
 
 ## Repository Contents
 

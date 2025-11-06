@@ -1,27 +1,35 @@
-```markdown
-# 🧬 RNA-seq Practice Workflow (Paired-End)
+
+# RNA-seq Practice Workflow (Paired-End)
 
 This repository provides a **hands-on practice pipeline** for students learning RNA-seq data analysis.  
-It uses **publicly available sample reads** (uploaded here), and covers every major preprocessing step — from quality control to read counting.
+It uses **publicly available paired-end reads** (uploaded here as *control* and *treated* samples) and covers every major preprocessing step — from quality control to gene-level read counting.
 
----
-```
-## 📂 Repository Contents
+## Repository Contents
 
 ```
 
 sample/
 ├── 50k_subsamples/              # Paired-end FASTQ files (sample data)
+│   ├── control_rep1_1.50k.fastq
+│   ├── control_rep1_2.50k.fastq
+│   ├── control_rep2_1.50k.fastq
+│   ├── control_rep2_2.50k.fastq
+│   ├── control_rep3_1.50k.fastq
+│   ├── control_rep3_2.50k.fastq
+│   ├── treated_rep1_1.50k.fastq
+│   ├── treated_rep1_2.50k.fastq
+│   ├── treated_rep2_1.50k.fastq
+│   ├── treated_rep2_2.50k.fastq
+│   ├── treated_rep3_1.50k.fastq
+│   └── treated_rep3_2.50k.fastq
 ├── trim_and_qc_one_sample.sh    # Automated trimming + QC script (optional)
 └── README.md                    # This guide
 
 ````
 
----
+## Quick Start
 
-## 🚀 Quick Start
-
-### 1️⃣ Install Required Tools
+### Install Required Tools
 
 Make sure these tools are installed and available in your PATH:
 
@@ -33,7 +41,7 @@ Make sure these tools are installed and available in your PATH:
 | **Samtools** | BAM/SAM processing | `conda install -c bioconda samtools` |
 | **HTSeq** | Gene-level read counting | `conda install -c bioconda htseq` |
 
-Alternatively, if Conda is not available, you can use:
+Alternatively, if Conda is not available:
 
 ```bash
 sudo apt install fastqc hisat2 samtools htseq
@@ -42,24 +50,24 @@ python3 -m pip install --user cutadapt
 
 ---
 
-## 🧪 Example Workflow
+## Example Workflow
 
-Below is a complete example using one sample (e.g., **SRR866245**).
-Repeat for each sample pair in the dataset.
+Below is a complete example using one control sample (**control_rep1**).
+Repeat for each sample pair (both control and treated replicates).
 
 ---
 
 ### **Step 1 — Quality Check (Raw Reads)**
 
 ```bash
-fastqc SRR866245_1.fastq SRR866245_2.fastq -o fastqc_raw
+fastqc control_rep1_1.50k.fastq control_rep1_2.50k.fastq -o fastqc_raw
 ```
 
 **Explanation**
 
-* `SRR866245_1.fastq` and `SRR866245_2.fastq` are forward and reverse reads
-* `-o fastqc_raw` specifies an output directory for the FastQC reports
-* Open `fastqc_raw/SRR866245_1_fastqc.html` in a web browser to view quality metrics
+* `control_rep1_1.50k.fastq` and `control_rep1_2.50k.fastq` are forward and reverse reads.
+* `-o fastqc_raw` specifies an output directory for FastQC reports.
+* Open `fastqc_raw/control_rep1_1.50k_fastqc.html` in a web browser to review read quality.
 
 ---
 
@@ -69,25 +77,25 @@ fastqc SRR866245_1.fastq SRR866245_2.fastq -o fastqc_raw
 trim_galore --paired \
   --clip_R1 10 --clip_R2 10 \
   --three_prime_clip_R1 5 --three_prime_clip_R2 5 \
-  SRR866245_1.fastq SRR866245_2.fastq \
+  control_rep1_1.50k.fastq control_rep1_2.50k.fastq \
   -o trimmed_reads
 ```
 
 **Explanation**
 
-* `--paired` → indicates paired-end data
-* `--clip_R1/2 10` → trims 10 bases from the 5′ end of each read
-* `--three_prime_clip_R1/2 5` → trims 5 bases from the 3′ end of each read
-* `-o trimmed_reads` → output directory for trimmed reads and trimming reports
+* `--paired` → indicates paired-end sequencing data.
+* `--clip_R1/2 10` → trims 10 bases from the 5′ end of each read.
+* `--three_prime_clip_R1/2 5` → trims 5 bases from the 3′ end of each read.
+* `-o trimmed_reads` → directory for trimmed reads and reports.
 
 **Output Files**
 
 ```
 trimmed_reads/
- ├── SRR866245_1.fastq_trimming_report.txt
- ├── SRR866245_2.fastq_trimming_report.txt
- ├── SRR866245_1_val_1.fq
- └── SRR866245_2_val_2.fq
+ ├── control_rep1_1.50k.fastq_trimming_report.txt
+ ├── control_rep1_2.50k.fastq_trimming_report.txt
+ ├── control_rep1_1.50k_val_1.fq
+ └── control_rep1_2.50k_val_2.fq
 ```
 
 ---
@@ -95,100 +103,104 @@ trimmed_reads/
 ### **Step 3 — Re-run QC on Trimmed Reads**
 
 ```bash
-fastqc trimmed_reads/SRR866245_1_val_1.fq trimmed_reads/SRR866245_2_val_2.fq -o fastqc_trimmed
+fastqc trimmed_reads/control_rep1_1.50k_val_1.fq trimmed_reads/control_rep1_2.50k_val_2.fq -o fastqc_trimmed
 ```
 
-This checks whether the **“Per base sequence content”** and other metrics improved after trimming.
+This step confirms that the **“Per base sequence content”** and overall quality improved after trimming.
 
 ---
 
 ### **Step 4 — Align Reads to the Reference Genome**
 
-Before mapping, make sure you have a **HISAT2 index** of your reference genome (e.g., `genome.*.ht2` files).
-If not yet built, create one using:
+Before mapping, build a **HISAT2 index** of your reference genome (only needed once):
 
 ```bash
 hisat2-build reference_genome.fa genome
 ```
 
-Then align reads:
+Then align reads for each sample:
 
 ```bash
 hisat2 -q -x genome \
-  -1 SRR866245_1.fastq \
-  -2 SRR866245_2.fastq \
-  -S SRR866245.sam \
-  --summary-file summary_SRR866245.txt
+  -1 control_rep1_1.50k.fastq \
+  -2 control_rep1_2.50k.fastq \
+  -S control_rep1.sam \
+  --summary-file summary_control_rep1.txt
 ```
 
 **Explanation**
 
-* `-x genome` → HISAT2 index basename
-* `-1` and `-2` → input paired reads
-* `-S` → output SAM file
-* `--summary-file` → saves alignment summary statistics
+* `-x genome` → HISAT2 index basename.
+* `-1` and `-2` → paired-end input reads.
+* `-S` → SAM alignment file output.
+* `--summary-file` → alignment summary with mapping percentages.
 
 ---
 
 ### **Step 5 — Convert and Sort Alignments**
 
 ```bash
-samtools view -S -b SRR866245.sam > SRR866245.bam
-samtools sort -o SRR866245_sorted.bam SRR866245.bam
+samtools view -S -b control_rep1.sam > control_rep1.bam
+samtools sort -o control_rep1_sorted.bam control_rep1.bam
 ```
 
 **Explanation**
 
-* Converts SAM to BAM format
-* Sorts BAM file by genomic coordinates (required for downstream tools)
+* Converts SAM to compressed BAM format.
+* Sorts reads by genomic coordinates (required for counting and visualization).
 
 ---
 
 ### **Step 6 — Generate Read Counts**
 
 ```bash
-htseq-count -f bam SRR866245_sorted.bam tomato.gtf > count_SRR866245.counts
+htseq-count -f bam control_rep1_sorted.bam tomato.gtf > count_control_rep1.counts
 ```
 
 **Explanation**
 
-* `-f bam` → input format is BAM
-* `tomato.gtf` → annotation file containing gene coordinates
-* Output file (`count_SRR866245.counts`) contains gene-wise read counts
+* `-f bam` → input format is BAM.
+* `tomato.gtf` → genome annotation file with gene coordinates.
+* Output file (`count_control_rep1.counts`) contains per-gene read counts.
 
 ---
 
-## 🧭 Full Workflow Summary
+## Full Workflow Summary
 
 ```bash
 # 1. Quality check (raw reads)
-fastqc SRR866245_1.fastq SRR866245_2.fastq -o fastqc_raw
+fastqc control_rep1_1.50k.fastq control_rep1_2.50k.fastq -o fastqc_raw
 
 # 2. Trim 5′ and 3′ ends
 trim_galore --paired \
   --clip_R1 10 --clip_R2 10 \
   --three_prime_clip_R1 5 --three_prime_clip_R2 5 \
-  SRR866245_1.fastq SRR866245_2.fastq -o trimmed
+  control_rep1_1.50k.fastq control_rep1_2.50k.fastq -o trimmed
 
-# 3. QC on trimmed reads
-fastqc trimmed/SRR866245_1_val_1.fq trimmed/SRR866245_2_val_2.fq -o fastqc_trimmed
+# 3. QC trimmed reads
+fastqc trimmed/control_rep1_1.50k_val_1.fq trimmed/control_rep1_2.50k_val_2.fq -o fastqc_trimmed
 
 # 4. Align reads
 hisat2 -q -x genome \
-  -1 SRR866245_1.fastq -2 SRR866245_2.fastq \
-  -S SRR866245.sam --summary-file summary_SRR866245.txt
+  -1 control_rep1_1.50k.fastq -2 control_rep1_2.50k.fastq \
+  -S control_rep1.sam --summary-file summary_control_rep1.txt
 
 # 5. Convert and sort
-samtools view -S -b SRR866245.sam > SRR866245.bam
-samtools sort -o SRR866245_sorted.bam SRR866245.bam
+samtools view -S -b control_rep1.sam > control_rep1.bam
+samtools sort -o control_rep1_sorted.bam control_rep1.bam
 
 # 6. Count reads per gene
-htseq-count -f bam SRR866245_sorted.bam tomato.gtf > count_SRR866245.counts
+htseq-count -f bam control_rep1_sorted.bam tomato.gtf > count_control_rep1.counts
 ```
+
+Repeat the above commands for:
+
+* **control_rep2**, **control_rep3**
+* **treated_rep1**, **treated_rep2**, **treated_rep3**
 
 ---
 
-## 📊 Output Overview
+## Output Overview
 
 | Step | Tool        | Input         | Output                     |
 | ---- | ----------- | ------------- | -------------------------- |
@@ -201,30 +213,30 @@ htseq-count -f bam SRR866245_sorted.bam tomato.gtf > count_SRR866245.counts
 
 ---
 
-## 💡 Notes for Students
+## Notes for Students
 
-* Each sample must be processed separately (replace `SRR866245` with your sample ID).
-* Verify that all FastQC quality modules pass after trimming.
-* The `.counts` files are suitable for differential expression tools such as **DESeq2**, **edgeR**, or **limma-voom**.
-* Ensure that the genome FASTA and annotation GTF files come from the same genome version.
-* HISAT2, Samtools, and HTSeq should all run in the same working directory.
+* Process **each replicate** separately (both control and treated).
+* Check FastQC reports after trimming — all quality modules should pass.
+* `.counts` files are used as input for **DESeq2**, **edgeR**, or **limma-voom** for differential expression.
+* Ensure the **reference genome FASTA** and **annotation GTF** are from the same version.
+* Run HISAT2, Samtools, and HTSeq in the same working directory.
 
 ---
 
-## 🧰 Optional: Run the Pipeline for All Samples
+## Optional: Run the Pipeline for All Samples
 
-You can automate all paired-end samples with this simple loop:
+Automate processing of all paired-end samples:
 
 ```bash
-for s in *_1.fastq; do
-  base=${s%_1.fastq}
-  fastqc ${base}_1.fastq ${base}_2.fastq -o fastqc_raw
+for s in *_1.50k.fastq; do
+  base=${s%_1.50k.fastq}
+  fastqc ${base}_1.50k.fastq ${base}_2.50k.fastq -o fastqc_raw
   trim_galore --paired \
     --clip_R1 10 --clip_R2 10 \
     --three_prime_clip_R1 5 --three_prime_clip_R2 5 \
-    ${base}_1.fastq ${base}_2.fastq -o trimmed
+    ${base}_1.50k.fastq ${base}_2.50k.fastq -o trimmed
   hisat2 -q -x genome \
-    -1 ${base}_1.fastq -2 ${base}_2.fastq \
+    -1 ${base}_1.50k.fastq -2 ${base}_2.50k.fastq \
     -S ${base}.sam --summary-file summary_${base}.txt
   samtools view -S -b ${base}.sam > ${base}.bam
   samtools sort -o ${base}_sorted.bam ${base}.bam
@@ -234,13 +246,13 @@ done
 
 ---
 
-## 👨‍🏫 Author
+## Author
 
 Developed by **effective-robot**
-for hands-on **RNA-seq training workshops** on data preprocessing, alignment, and quantification.
+for **hands-on RNA-seq training workshops** on read preprocessing, alignment, and quantification.
 
 ---
 
-### ✅ End of README
+### End of README
 
 ```

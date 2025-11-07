@@ -122,8 +122,8 @@ Then align reads for each sample:
 
 ```bash
 hisat2 -q -x genome \
-  -1 control_rep1_1.50k.fastq \
-  -2 control_rep1_2.50k.fastq \
+  -1 read_file_1.fastq \
+  -2 read_file_2.50k.fastq \
   -S control_rep1.sam \
   --summary-file summary_control_rep1.txt
 ```
